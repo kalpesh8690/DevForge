@@ -1,16 +1,27 @@
 # DevForge
 
-A secure, cross-platform developer desktop workspace built with Electron, React, Vite, and Monaco Editor.
+DevForge is a cross-platform Electron developer workspace built with React, Vite, and Monaco Editor.
 
-## Project status
+## Current implementation
 
-This repository is being developed in phases. The initial foundation focuses on a secure Electron shell, editor, workspace file operations, and persistent preferences. Compiler adapters, AI providers, formatter integrations, toolbox utilities, Git, terminal, and debugging support are being added incrementally and must be tested on target operating systems before being described as production-ready.
+- Electron desktop shell with context isolation, renderer Node integration disabled, a narrow preload API, and workspace-root file access checks.
+- Monaco code editor, workspace file indexing, save action, editor preferences, and dark/light theme.
+- Local runner adapters for JavaScript, Python, Java, Go, Rust, C, C++, PHP, and Ruby. The relevant runtimes/compilers must be installed on the machine.
+- Interactive local-first toolbox: JSON format/minify, JSON-to-CSV, line comparison, Base64/URL transforms, text statistics, and JWT payload decoding.
+- Runtime discovery panel, bounded output, temporary execution directories, and per-process timeouts.
+- Vitest unit tests for utility functions and GitHub Actions CI configuration.
+
+## Important security and maturity notes
+
+**This is an active starter project, not a production-ready IDE yet.** Local code execution runs with the current operating-system user's permissions and is not a hardened sandbox. Only execute code you trust. Process timeouts/output caps reduce accidental runaway output but do not replace OS-level isolation. JWT payload decoding does not validate a signature.
+
+AI provider integration, secure credential vault, real terminal, Git UI, debugger/DAP, full formatter adapters, remote execution providers, and installer verification are not yet implemented. See docs/ROADMAP.md for a current feature status.
 
 ## Requirements
 
-- Node.js LTS and npm
-- For desktop packaging, platform-specific build tools may be required
-- Language execution requires the relevant runtime/compiler installed locally unless a configured remote provider is used
+- Node.js 22 or a supported current LTS release and npm
+- Electron's platform-specific build prerequisites for packaging
+- Optional language toolchains: Python, JDK (java/javac), Go, Rust (rustc), GCC/Clang, PHP, Ruby
 
 ## Development
 
@@ -19,21 +30,17 @@ npm install
 npm run dev
 ```
 
-Build frontend: `npm run build:web`
-Run tests: `npm test`
-Package desktop app: `npm run build`
+## Verification and packaging
 
-## Security
+```bash
+npm run lint
+npm test
+npm run build:web
+npm run build
+```
 
-The renderer must not receive unrestricted Node.js or filesystem access. Privileged operations belong in the Electron main process and should be exposed only through a narrow preload API with sender and argument validation. Never run arbitrary shell commands from renderer-controlled strings. External code execution is powerful and must be explicitly configured by the user.
+Run the build and smoke tests on each target OS (Windows, macOS, Linux) before distributing installers. Platform signing and notarization require appropriate credentials and are not configured here.
 
-## Roadmap
+## Security design
 
-1. Electron foundation, editor, project explorer, settings
-2. Runtime detection and isolated execution adapters
-3. Formatting and developer toolbox
-4. AI providers with review-before-apply workflow
-5. Terminal, Git, snippets, static analysis, debugging adapters
-6. Testing, security review, documentation, and packaging verification
-
-See `docs/ROADMAP.md` for implementation scope and known limitations.
+Privileged operations live in Electron's main process and are exposed through a constrained preload API. Renderer Node integration is disabled and context isolation is enabled. Never pass renderer-controlled command strings to a shell. A secure production execution environment should use an OS sandbox, container, VM, or remote isolated runner with explicit resource limits.
