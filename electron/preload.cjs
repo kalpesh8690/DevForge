@@ -9,5 +9,8 @@ contextBridge.exposeInMainWorld('devforge', Object.freeze({
   saveSettings: s => ipcRenderer.invoke('settings:save', s),
   detectRuntimes: () => ipcRenderer.invoke('runtime:detect'),
   runCode: (code, language) => ipcRenderer.invoke('run:code', { code, language }),
+  aiKeyStatus: () => ipcRenderer.invoke('ai:keyStatus'),
+  saveAiKey: key => ipcRenderer.invoke('ai:saveKey', key),
+  aiChat: payload => ipcRenderer.invoke('ai:chat', payload),
   isDesktop: true
 }));
