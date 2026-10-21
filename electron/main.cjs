@@ -8,12 +8,6 @@ let mainWindow;
 const workspaceRoots = new Set();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 256 * 1024;
-const runtimes = {
-  javascript: { bin: process.execPath, args: ['--disable-warning=ExperimentalWarning', '{file}'], ext: 'js' },
-  node: { bin: process.execPath, args: ['{file}'], ext: 'js' },
-  python: { bin: 'python', args: ['-I', '{file}'], ext: 'py', fallback: 'python3' }
-};
-
 function createWindow() {
   mainWindow = new BrowserWindow({ width: 1500, height: 960, minWidth: 980, minHeight: 650,
     title: 'DevForge', backgroundColor: '#0b0e14',
@@ -46,7 +40,20 @@ ipcMain.handle('fs:read', async (event, file) => { trusted(event); file=await as
 ipcMain.handle('fs:write', async (event, p) => { trusted(event); if(!p||typeof p.content!=='string'||Buffer.byteLength(p.content)>MAX_FILE_BYTES*2) throw new Error('Invalid save request'); const target=await assertWorkspacePath(p.path,{allowRoot:false}); await fs.writeFile(target,p.content,'utf8'); return {ok:true}; });
 ipcMain.handle('settings:load', async event => { trusted(event); try{return JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'settings.json'),'utf8'));}catch{return {theme:'dark',fontSize:14,wordWrap:'on',minimap:true};} });
 ipcMain.handle('settings:save', async (event,s) => { trusted(event); if(!s||typeof s!=='object'||Array.isArray(s)) throw new Error('Invalid settings'); await fs.writeFile(path.join(app.getPath('userData'),'settings.json'),JSON.stringify(s,null,2),{mode:0o600}); return {ok:true}; });
-ipcMain.handle('runtime:detect', async event => { trusted(event); const checks=[['node','--version'],['npm','--version'],['python','--version'],['python3','--version'],['java','-version'],['go','version'],['rustc','--version'],['gcc','--version'],['clang','--version'],['dotnet','--version'],['php','--version'],['ruby','--version']]; return Promise.all(checks.map(([bin,arg])=>new Promise(resolve=>{const p=spawn(bin,[arg],{shell:false,windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>out+=d);p.on('error',()=>resolve({name:bin,available:false,version:null}));p.on('close',code=>resolve({name:bin,available:code===0,version:out.trim().split(/\r?\n/)[0]||null}));}))); });
+ipcMain.handle('runtime:detect', async event => {
+ trusted(event);
+ const checks=[['node','--version'],['npm','--version'],['python','--version'],['python3','--version'],['java','-version'],['javac','-version'],['go','version'],['rustc','--version'],['gcc','--version'],['g++','--version'],['clang','--version'],['clang++','--version'],['dotnet','--version'],['php','--version'],['ruby','--version']];
+ return Promise.all(checks.map(([bin,arg])=>new Promise(resolve=>{
+  let out='',done=false;
+  const finish=result=>{if(done)return;done=true;clearTimeout(timer);resolve(result);};
+  const p=spawn(bin,[arg],{shell:false,windowsHide:true});
+  p.stdout?.on('data',d=>{if(out.length<4096)out+=d.toString().slice(0,4096-out.length);});
+  p.stderr?.on('data',d=>{if(out.length<4096)out+=d.toString().slice(0,4096-out.length);});
+  p.on('error',()=>finish({name:bin,available:false,version:null}));
+  p.on('close',code=>finish({name:bin,available:code===0,version:out.trim().split(/\\r?\\n/)[0]||null}));
+  const timer=setTimeout(()=>{p.kill();finish({name:bin,available:false,version:'Timed out'});},2500);
+ })));
+});
 const SUPPORTED_RUNNERS = {
   javascript: { file: 'main.cjs', run: async dir => ({ bin: process.execPath, args: ['--disable-warning=ExperimentalWarning', path.join(dir,'main.cjs')], env: { ELECTRON_RUN_AS_NODE: '1' } }) },
   python: { file: 'main.py', run: async dir => ({ bin: await findExecutable(['python','python3','py']), args: ['-I', path.join(dir,'main.py')] }) },
