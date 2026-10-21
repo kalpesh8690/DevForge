@@ -50,7 +50,7 @@ ipcMain.handle('runtime:detect', async event => {
   p.stdout?.on('data',d=>{if(out.length<4096)out+=d.toString().slice(0,4096-out.length);});
   p.stderr?.on('data',d=>{if(out.length<4096)out+=d.toString().slice(0,4096-out.length);});
   p.on('error',()=>finish({name:bin,available:false,version:null}));
-  p.on('close',code=>finish({name:bin,available:code===0,version:out.trim().split(/\\r?\\n/)[0]||null}));
+  p.on('close',code=>finish({name:bin,available:code===0,version:out.trim().split(/\r?\n/)[0]||null}));
   const timer=setTimeout(()=>{p.kill();finish({name:bin,available:false,version:'Timed out'});},2500);
  })));
 });
@@ -82,14 +82,14 @@ function runChild(bin,args,{cwd,env={}}={}) {
   const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve({...result,durationMs:Date.now()-started});};
   const append=(key,data)=>{
    const s=data.toString(); const remaining=MAX_OUTPUT_BYTES-Buffer.byteLength(stdout)-Buffer.byteLength(stderr);
-   if(remaining<=0){if(!limitHit){limitHit=true;child.kill();stderr+='\\n[output limit reached]';}return;}
+   if(remaining<=0){if(!limitHit){limitHit=true;child.kill();stderr+='\n[output limit reached]';}return;}
    const part=Buffer.from(s).subarray(0,remaining).toString();
    if(key==='stdout')stdout+=part;else stderr+=part;
-   if(Buffer.byteLength(s)>remaining&&!limitHit){limitHit=true;child.kill();stderr+='\\n[output limit reached]';}
+   if(Buffer.byteLength(s)>remaining&&!limitHit){limitHit=true;child.kill();stderr+='\n[output limit reached]';}
   };
   child.stdout.on('data',d=>append('stdout',d)); child.stderr.on('data',d=>append('stderr',d));
   child.on('error',e=>finish({stdout,stderr:stderr||e.message,exitCode:1,timedOut:false}));
-  const timer=setTimeout(()=>{child.kill();finish({stdout,stderr:stderr+'\\n[execution timed out after 8 seconds]',exitCode:null,timedOut:true});},8000);
+  const timer=setTimeout(()=>{child.kill();finish({stdout,stderr:stderr+'\n[execution timed out after 8 seconds]',exitCode:null,timedOut:true});},8000);
   child.on('close',code=>finish({stdout,stderr,exitCode:code,timedOut:false}));
  });
 }
@@ -141,7 +141,7 @@ ipcMain.handle('ai:chat', async (event, payload) => {
  const endpoint=new URL(payload.endpoint);
  const localHosts=new Set(['localhost','127.0.0.1','::1','[::1]']);
  if(endpoint.username||endpoint.password||!(endpoint.protocol==='https:'||(endpoint.protocol==='http:'&&localHosts.has(endpoint.hostname)))) throw new Error('Use HTTPS for remote providers. HTTP is allowed only for localhost model servers.');
- endpoint.pathname=endpoint.pathname.replace(/\\/$/,'');
+ endpoint.pathname=endpoint.pathname.replace(/\/$/,'');
  if(!endpoint.pathname.endsWith('/chat/completions')) endpoint.pathname+='/chat/completions';
  endpoint.search='';endpoint.hash='';
  const messages=payload.messages.map(m=>{
