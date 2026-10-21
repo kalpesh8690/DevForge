@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, View
+  StatusBar, StyleSheet, Text, TextInput, View, StyleProp, TextStyle
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { runTool, TOOL_NAMES, ToolName } from "./src/lib/tools";
@@ -43,7 +43,7 @@ function Button({ title, onPress, active = false, disabled = false, small = fals
 
 function Field({ value, onChangeText, placeholder, multiline = false, secret = false, style }: {
   value: string; onChangeText: (v: string) => void; placeholder: string;
-  multiline?: boolean; secret?: boolean; style?: object;
+  multiline?: boolean; secret?: boolean; style?: StyleProp<TextStyle>;
 }) {
   return <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder}
     placeholderTextColor={C.muted} multiline={multiline} secureTextEntry={secret}
