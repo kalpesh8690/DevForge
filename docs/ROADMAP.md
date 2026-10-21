@@ -9,8 +9,8 @@ The editor Run action is wired to local JavaScript, Python, Java, Go, Rust, C, C
 ## Phase 3 — Developer toolbox (initial utilities implemented)
 Interactive JSON formatting/minification and JSON-to-CSV, text comparison, Base64 and URL transforms, text statistics, and JWT payload decoding are implemented in the UI with unit tests for core helpers. JWT decoding does not validate signatures. Full formatter adapters, YAML/XML tooling, regex tester, API client, markdown preview, database clients, and additional utilities remain pending.
 
-## Phase 4 — AI assistant (pending)
-Provider adapters, OS credential vault integration, model selection, context preview, token/time limits, and approval-based diff application are not implemented. Never place secrets in renderer state, source control, or logs.
+## Phase 4 — AI assistant (initial provider support implemented; verification pending)
+The assistant can call an OpenAI-compatible chat-completions endpoint, supports configurable base URL/model, requires opt-in code context, stores API credentials using Electron safeStorage encryption, restricts remote providers to HTTPS (HTTP is permitted for localhost model servers), disables redirects, limits message sizes, and uses a request timeout. Secure key removal is available. Provider-specific compatibility, UI review/diff application, token budgeting, and integration tests remain pending. Never place secrets in source control or logs.
 
 ## Phase 5 — Advanced development (pending)
 PTY-backed terminal, Git workflow, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
