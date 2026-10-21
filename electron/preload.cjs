@@ -8,6 +8,6 @@ contextBridge.exposeInMainWorld('devforge', Object.freeze({
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: s => ipcRenderer.invoke('settings:save', s),
   detectRuntimes: () => ipcRenderer.invoke('runtime:detect'),
-  runJavaScript: code => ipcRenderer.invoke('run:javascript', { code }),
+  runCode: (code, language) => ipcRenderer.invoke('run:code', { code, language }),
   isDesktop: true
 }));
