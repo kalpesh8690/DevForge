@@ -7,7 +7,7 @@ const starter = `// Welcome to DevForge
 // Write JavaScript and run it locally.
 
 function greet(name) {
-  return \`Hello, ${name}!\`;
+  return \`Hello, \${name}!\`;
 }
 
 console.log(greet("developer"));
