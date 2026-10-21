@@ -32,7 +32,7 @@ async function assertWorkspacePath(target, {allowRoot=true}={}) {
   if((rel===''&&allowRoot)|| (rel!==''&&!rel.startsWith('..'+path.sep)&&rel!=='..'&&!path.isAbsolute(rel))){
    const realRoot=await fs.realpath(root);
    let realTarget;
-   try{realTarget=await fs.realpath(resolved);}catch(error){if(error.code==='ENOENT'&&rel!=='')return resolved;throw error;}
+   try{realTarget=await fs.realpath(resolved);}catch(error){if(error.code==='ENOENT'&&rel!==''){const parentReal=await fs.realpath(path.dirname(resolved));const parentRel=path.relative(realRoot,parentReal);if(parentRel===''||(!parentRel.startsWith('..'+path.sep)&&parentRel!=='..'&&!path.isAbsolute(parentRel))){try{await fs.lstat(resolved);throw new Error('Symbolic links are not allowed for workspace file operations');}catch(statError){if(statError.code==='ENOENT')return resolved;throw statError;}}}throw error;}
    const realRel=path.relative(realRoot,realTarget);
    if(realRel===''||(!realRel.startsWith('..'+path.sep)&&realRel!=='..'&&!path.isAbsolute(realRel))) return resolved;
   }
