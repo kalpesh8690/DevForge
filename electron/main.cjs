@@ -147,21 +147,22 @@ ipcMain.handle('git:command', async (event, payload) => {
 });
 const aiKeyPath = () => path.join(app.getPath('userData'),'ai-key.enc');
 async function readAiKey(){
- if(!safeStorage.isEncryptionAvailable()) throw new Error('OS secure storage is unavailable on this system.');
+ if(!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('OS secure storage is unavailable on this system.');
  const encrypted=await fs.readFile(aiKeyPath());
- return safeStorage.decryptString(encrypted);
+ return safeStorage.decryptStringAsync(encrypted);
 }
 ipcMain.handle('ai:keyStatus', async event => {
  trusted(event);
- try{await fs.access(aiKeyPath());return {configured:true,secureStorage:safeStorage.isEncryptionAvailable()};}
- catch{return {configured:false,secureStorage:safeStorage.isEncryptionAvailable()};}
+ const secureStorage=await safeStorage.isAsyncEncryptionAvailable();
+ try{await fs.access(aiKeyPath());return {configured:true,secureStorage};}
+ catch{return {configured:false,secureStorage};}
 });
 ipcMain.handle('ai:clearKey', async event => { trusted(event); await fs.rm(aiKeyPath(),{force:true}); return {ok:true}; });
 ipcMain.handle('ai:saveKey', async (event, key) => {
  trusted(event);
  if(typeof key!=='string'||key.trim().length<8||key.length>4096) throw new Error('Enter a valid API key.');
- if(!safeStorage.isEncryptionAvailable()) throw new Error('OS secure storage is unavailable. AI credentials cannot be saved safely.');
- await fs.writeFile(aiKeyPath(),safeStorage.encryptString(key.trim()),{mode:0o600});
+ if(!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('OS secure storage is unavailable. AI credentials cannot be saved safely.');
+ await fs.writeFile(aiKeyPath(),await safeStorage.encryptStringAsync(key.trim()),{mode:0o600});
  return {ok:true};
 });
 ipcMain.handle('ai:chat', async (event, payload) => {
