@@ -10,6 +10,7 @@ DevForge is a cross-platform Electron developer workspace built with React, Vite
 - Interactive local-first toolbox: JSON format/minify, JSON-to-CSV, line comparison, Base64/URL transforms, text statistics, and JWT payload decoding.
 - Runtime discovery panel, bounded output, temporary execution directories, and per-process timeouts.
 - Initial OpenAI-compatible AI chat panel with optional code context, configurable endpoint/model, HTTPS-only remote endpoints, and OS-encrypted credential storage.
+- Local Git view for status, recent history, unstaged diff, explicit stage-all, and commits (no remote commands).
 - Vitest unit tests for utility functions and GitHub Actions CI configuration.
 
 ## Important security and maturity notes
