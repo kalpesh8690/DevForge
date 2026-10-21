@@ -12,8 +12,8 @@ Interactive JSON formatting/minification and JSON-to-CSV, text comparison, Base6
 ## Phase 4 — AI assistant (initial provider support implemented; verification pending)
 The assistant can call an OpenAI-compatible chat-completions endpoint, supports configurable base URL/model, requires opt-in code context, stores API credentials using Electron safeStorage encryption, restricts remote providers to HTTPS (HTTP is permitted for localhost model servers), disables redirects, limits message sizes, and uses a request timeout. Secure key removal is available. Provider-specific compatibility, UI review/diff application, token budgeting, and integration tests remain pending. Never place secrets in source control or logs.
 
-## Phase 5 — Advanced development (pending)
-PTY-backed terminal, Git workflow, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
+## Phase 5 — Advanced development (initial Git support implemented; remaining work pending)
+A local Git view supports status, recent history, unstaged diff, explicit stage-all, and commit actions through an allowlisted argument map with shell execution disabled. Push/pull/fetch and arbitrary Git commands are not exposed. Git credentials, branch switching, conflict resolution, PTY-backed terminal, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
 
 ## Phase 6 — Production readiness (pending)
 Unit/integration/E2E coverage, dependency audit, threat review, installer smoke tests on Windows/macOS/Linux, signing/notarization, update infrastructure, and release documentation remain pending. Do not describe the application as production-ready until these gates pass.
