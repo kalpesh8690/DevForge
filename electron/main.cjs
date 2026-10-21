@@ -136,7 +136,7 @@ ipcMain.handle('git:command', async (event, payload) => {
  const actions={
   status:()=>['status','--short','--branch'],
   log:()=>['log','-10','--oneline','--decorate'],
-  diff:()=>['diff','--no-ext-diff','--'],
+  diff:()=>['diff','--no-ext-diff','HEAD','--'],
   branches:()=>['branch','--list'],
   stageAll:()=>['add','--all'],
   commit:()=>{if(typeof payload.message!=='string'||!payload.message.trim()||payload.message.length>200)throw new Error('Commit message must be 1–200 characters.');return ['commit','-m',payload.message.trim()];}
