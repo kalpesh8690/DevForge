@@ -17,15 +17,15 @@ export const TOOL_NAMES: ToolName[] = [
 ];
 
 function encodeBase64Utf8(input: string): string {
-  const bytes = new TextEncoder().encode(input);
+  const binary = encodeURIComponent(input).replace(/%([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   let out = "";
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i];
-    const hasB = i + 1 < bytes.length;
-    const hasC = i + 2 < bytes.length;
-    const b = hasB ? bytes[i + 1] : 0;
-    const c = hasC ? bytes[i + 2] : 0;
+  for (let i = 0; i < binary.length; i += 3) {
+    const a = binary.charCodeAt(i);
+    const hasB = i + 1 < binary.length;
+    const hasC = i + 2 < binary.length;
+    const b = hasB ? binary.charCodeAt(i + 1) : 0;
+    const c = hasC ? binary.charCodeAt(i + 2) : 0;
     out += alphabet[a >> 2];
     out += alphabet[((a & 3) << 4) | (b >> 4)];
     out += hasB ? alphabet[((b & 15) << 2) | (c >> 6)] : "=";
@@ -50,7 +50,8 @@ function decodeBase64Utf8(input: string): string {
     if (normalized[i + 2] !== "=") bytes.push(((b & 15) << 4) | (c >> 2));
     if (normalized[i + 3] !== "=") bytes.push(((c & 3) << 6) | d);
   }
-  return new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes));
+  const escaped = bytes.map((byte) => "%" + byte.toString(16).padStart(2, "0")).join("");
+  try { return decodeURIComponent(escaped); } catch { throw new Error("Base64 does not contain valid UTF-8 text."); }
 }
 
 function jsonToCsv(input: string): string {
