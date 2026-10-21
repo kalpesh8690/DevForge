@@ -22,7 +22,7 @@ Advanced AI editing with preview/diff, full terminal, branch switching/conflict 
 
 ## Requirements
 
-- Node.js 22 or a supported current LTS release and npm
+- Node.js 24 (recommended; Node.js 22.12+ may work for development) and npm
 - Electron's platform-specific build prerequisites for packaging
 - Optional language toolchains: Python, JDK (java/javac), Go, Rust (rustc), GCC/Clang, PHP, Ruby
 
