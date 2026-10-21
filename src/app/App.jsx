@@ -20,7 +20,7 @@ async function readWorkspaceFiles(root, maxDepth=8, maxFiles=2500){
   const current=queue.shift(); if(current.depth>maxDepth) continue;
   let entries=[]; try{entries=await window.devforge.listDirectory(current.path);}catch{continue;}
   for(const entry of entries){
-   if(entry.type==='directory'){if(current.depth<maxDepth) queue.push({path:entry.path,depth:current.depth+1});}
+   if(entry.type==='directory'){if(current.depth<maxDepth&&!['dist','build','coverage','.next','.nuxt','release','vendor'].includes(entry.name)) queue.push({path:entry.path,depth:current.depth+1});}
    else if(entry.type==='file'){result.push({...entry,depth:current.depth});if(result.length>=maxFiles)break;}
   }
  }
@@ -36,7 +36,7 @@ const TOOL_LIST=[
 function App(){
  const [theme,setTheme]=useState('dark'),[fontSize,setFontSize]=useState(14),[wordWrap,setWordWrap]=useState(true),[minimap,setMinimap]=useState(true);
  const [workspace,setWorkspace]=useState(null),[files,setFiles]=useState(samples),[active,setActive]=useState({name:'index.js',path:'sample/index.js',content:starter}),[dirty,setDirty]=useState(false);
- const [output,setOutput]=useState('Ready. JavaScript execution is available in the desktop build.'),[busy,setBusy]=useState(false),[runtimes,setRuntimes]=useState([]),[view,setView]=useState('explorer');
+ const [output,setOutput]=useState('Ready. Local language execution is available in the desktop build when the required toolchain is installed.'),[busy,setBusy]=useState(false),[runtimes,setRuntimes]=useState([]),[view,setView]=useState('explorer');
  const [tool,setTool]=useState('json'),[jsonInput,setJsonInput]=useState('{"name":"DevForge","languages":["JavaScript","Python"],"active":true}'),[toolOutput,setToolOutput]=useState(''),[toolError,setToolError]=useState('');
  const [leftText,setLeftText]=useState('const answer = 42;\nconsole.log(answer);'),[rightText,setRightText]=useState('const answer = 43;\nconsole.log(answer);');
  const [encodingInput,setEncodingInput]=useState('DevForge ✓'),[encodingMode,setEncodingMode]=useState('base64-encode'),[textInput,setTextInput]=useState('DevForge is an all-in-one developer workspace.'),[jwtInput,setJwtInput]=useState('');
