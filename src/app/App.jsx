@@ -12,7 +12,20 @@ function greet(name) {
 
 console.log(greet("developer"));
 `;
-const samples=[{name:'index.js',path:'sample/index.js',type:'file'}];
+const samples=[{name:'index.js',path:'sample/index.js',type:'file',depth:0}];
+async function readWorkspaceFiles(root, maxDepth=8, maxFiles=2500){
+ if(!window.devforge) return samples;
+ const result=[]; const queue=[{path:root,depth:0}];
+ while(queue.length&&result.length<maxFiles){
+  const current=queue.shift(); if(current.depth>maxDepth) continue;
+  let entries=[]; try{entries=await window.devforge.listDirectory(current.path);}catch{continue;}
+  for(const entry of entries){
+   if(entry.type==='directory'){if(current.depth<maxDepth) queue.push({path:entry.path,depth:current.depth+1});}
+   else if(entry.type==='file'){result.push({...entry,depth:current.depth});if(result.length>=maxFiles)break;}
+  }
+ }
+ return result.sort((a,b)=>a.path.localeCompare(b.path,undefined,{numeric:true}));
+}
 const TOOL_LIST=[
  {id:'json',name:'JSON Studio',desc:'Format, minify and convert JSON to CSV',icon:Braces},
  {id:'compare',name:'Code Compare',desc:'Compare two text or code snippets',icon:GitCompare},
@@ -32,7 +45,7 @@ function App(){
  useEffect(()=>{window.devforge?.detectRuntimes().then(setRuntimes).catch(()=>{});},[]);
  const language=useMemo(()=>detectLanguage(active.name),[active.name]);
  const saveSettings=async next=>{try{await window.devforge?.saveSettings(next);}catch{}};
- async function openFolder(){if(!window.devforge){setOutput('Open folders is available in the Electron desktop app.');return;}try{const f=await window.devforge.openFolder();if(!f)return;setWorkspace(f);const entries=await window.devforge.listDirectory(f.path);setFiles(entries.filter(e=>e.type==='file'));setOutput('Opened workspace: '+f.path);}catch(e){setOutput('Open folder failed: '+e.message);}}
+ async function openFolder(){if(!window.devforge){setOutput('Open folders is available in the Electron desktop app.');return;}try{const f=await window.devforge.openFolder();if(!f)return;setWorkspace(f);const entries=await readWorkspaceFiles(f.path);setFiles(entries);setOutput('Opened workspace: '+f.path+' · '+entries.length+' files indexed (depth limited to 8).');}catch(e){setOutput('Open folder failed: '+e.message);}}
  async function openFile(file){try{const content=window.devforge?await window.devforge.readTextFile(file.path):starter;setActive({...file,content});setDirty(false);setView('explorer');}catch(e){setOutput('Could not open file: '+e.message);}}
  async function save(){if(!active.path||active.path.startsWith('sample/')){setOutput('Choose a real file from an opened workspace before saving.');return;}try{await window.devforge.writeTextFile({path:active.path,content:active.content});setDirty(false);setOutput('Saved '+active.name+'.');}catch(e){setOutput('Save failed: '+e.message);}}
  async function run(){if(language!=='javascript'){setOutput('The current execution adapter supports JavaScript only. Other language adapters are not yet implemented.');return;}if(!window.devforge){setOutput('Run code from the packaged Electron desktop app, not the browser preview.');return;}setBusy(true);setOutput('Running…');try{const r=await window.devforge.runJavaScript(active.content);setOutput([r.stdout&&'STDOUT\n'+r.stdout,r.stderr&&'STDERR\n'+r.stderr,'Exit: '+r.exitCode+' · '+r.durationMs+' ms'].filter(Boolean).join('\n\n'));}catch(e){setOutput('Execution failed: '+e.message);}finally{setBusy(false);}}
@@ -42,7 +55,7 @@ function App(){
  const nav=(id,label,Icon)=><button className={view===id?'active':''} onClick={()=>setView(id)} key={id}><Icon size={14}/>{label}</button>;
  return <div className="app" data-theme={theme}>
  <header className="topbar"><div className="brand">◈ <span>Dev</span>Forge</div><span className="muted">{workspace?.name||'Untitled workspace'}</span><div className="toolbar"><button className="btn" onClick={openFolder}><FolderOpen size={13}/> Open Folder</button><button className="btn" onClick={save}><Save size={13}/> Save</button><button className="btn primary" disabled={busy} onClick={run}><Play size={13}/>{busy?'Running…':'Run'}</button><button className="btn" title="Toggle theme" onClick={toggleTheme}>{theme==='dark'?<Sun size={14}/>:<Moon size={14}/>}</button></div></header>
- <div className="layout"><aside className="sidebar"><div className="section-title">Workspace</div><div className="tree">{nav('explorer','Explorer',FolderOpen)}{nav('runtimes','Runtimes',Terminal)}{nav('tools','Toolbox',Wrench)}{nav('settings','Settings',Settings)}</div><div className="section-title">{workspace?.name||'Sample files'}</div><div className="tree">{files.map(f=><button className={active.path===f.path?'active':''} key={f.path} onClick={()=>openFile(f)}><FileCode2 size={14}/>{f.name}</button>)}</div><div className="section-title">Developer tools</div><div className="tree">{TOOL_LIST.map(t=><button key={t.id} className={view==='tools'&&tool===t.id?'active':''} onClick={()=>{setView('tools');setTool(t.id);}}><t.icon size={14}/>{t.name}</button>)}</div></aside>
+ <div className="layout"><aside className="sidebar"><div className="section-title">Workspace</div><div className="tree">{nav('explorer','Explorer',FolderOpen)}{nav('runtimes','Runtimes',Terminal)}{nav('tools','Toolbox',Wrench)}{nav('settings','Settings',Settings)}</div><div className="section-title">{workspace?.name||'Sample files'}</div><div className="tree">{files.map(f=><button className={active.path===f.path?'active':''} key={f.path} title={f.path} style={{paddingLeft:8+Math.min(f.depth||0,8)*12}} onClick={()=>openFile(f)}><FileCode2 size={14}/>{f.name}</button>)}</div><div className="section-title">Developer tools</div><div className="tree">{TOOL_LIST.map(t=><button key={t.id} className={view==='tools'&&tool===t.id?'active':''} onClick={()=>{setView('tools');setTool(t.id);}}><t.icon size={14}/>{t.name}</button>)}</div></aside>
  <main className="editor-area">{view==='explorer'?<><div className="tabs"><div className="tab active"><Braces size={12}/>{active.name}{dirty?' •':''}</div></div><div className="editor"><Editor theme={theme==='dark'?'vs-dark':'light'} language={language} value={active.content} onChange={v=>{setActive(a=>({...a,content:v||''}));setDirty(true);}} options={{fontSize,minimap:{enabled:minimap},wordWrap:wordWrap?'on':'off',automaticLayout:true,scrollBeyondLastLine:false,padding:{top:14},tabSize:2}}/></div><section className="bottom"><div className="bottom-head"><span><Terminal size={12}/> OUTPUT</span><span>PROBLEMS</span><span>EXECUTION</span><span style={{marginLeft:'auto',cursor:'pointer'}} onClick={()=>setOutput('')}>Clear</span></div><pre>{output}</pre></section></>:null}
  {view==='tools'?<div className="workspace-view"><div className="view-heading"><div><h1>Developer Toolbox</h1><p>Small, local-first utilities. Your input stays in this app unless you copy it elsewhere.</p></div></div><div className="tool-tabs">{TOOL_LIST.map(t=><button key={t.id} className={tool===t.id?'selected':''} onClick={()=>{setTool(t.id);setToolOutput('');setToolError('');}}><t.icon size={15}/>{t.name}</button>)}</div>
  {tool==='json'?<div className="tool-grid"><section className="tool-panel"><h3>Input JSON</h3><textarea className="tool-textarea" value={jsonInput} onChange={e=>setJsonInput(e.target.value)} spellCheck="false"/><div className="action-row"><button className="btn primary" onClick={()=>doTool(()=>formatJson(jsonInput,2))}>Format</button><button className="btn" onClick={()=>doTool(()=>minifyJson(jsonInput))}>Minify</button><button className="btn" onClick={()=>doTool(()=>jsonToCsv(jsonInput))}>JSON → CSV</button></div></section><section className="tool-panel"><div className="panel-heading"><h3>Result</h3><button className="btn" onClick={()=>copy(toolOutput)}><Copy size={12}/> Copy</button></div><pre className="tool-output">{toolOutput||'Your result appears here.'}</pre>{toolError&&<p className="error">{toolError}</p>}</section></div>
