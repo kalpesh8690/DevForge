@@ -119,6 +119,7 @@ ipcMain.handle('ai:keyStatus', async event => {
  try{await fs.access(aiKeyPath());return {configured:true,secureStorage:safeStorage.isEncryptionAvailable()};}
  catch{return {configured:false,secureStorage:safeStorage.isEncryptionAvailable()};}
 });
+ipcMain.handle('ai:clearKey', async event => { trusted(event); await fs.rm(aiKeyPath(),{force:true}); return {ok:true}; });
 ipcMain.handle('ai:saveKey', async (event, key) => {
  trusted(event);
  if(typeof key!=='string'||key.trim().length<8||key.length>4096) throw new Error('Enter a valid API key.');
@@ -131,7 +132,7 @@ ipcMain.handle('ai:chat', async (event, payload) => {
  if(!payload||typeof payload.endpoint!=='string'||typeof payload.model!=='string'||!Array.isArray(payload.messages)) throw new Error('Invalid AI request.');
  if(payload.model.length>200||payload.messages.length<1||payload.messages.length>20) throw new Error('Invalid model or message count.');
  const endpoint=new URL(payload.endpoint);
- const localHosts=new Set(['localhost','127.0.0.1','::1']);
+ const localHosts=new Set(['localhost','127.0.0.1','::1','[::1]']);
  if(endpoint.username||endpoint.password||!(endpoint.protocol==='https:'||(endpoint.protocol==='http:'&&localHosts.has(endpoint.hostname)))) throw new Error('Use HTTPS for remote providers. HTTP is allowed only for localhost model servers.');
  endpoint.pathname=endpoint.pathname.replace(/\\/$/,'');
  if(!endpoint.pathname.endsWith('/chat/completions')) endpoint.pathname+='/chat/completions';
