@@ -31,6 +31,65 @@ ipcMain.handle('fs:write', async (event, p) => { trusted(event); if(!p||typeof p
 ipcMain.handle('settings:load', async event => { trusted(event); try{return JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'settings.json'),'utf8'));}catch{return {theme:'dark',fontSize:14,wordWrap:'on',minimap:true};} });
 ipcMain.handle('settings:save', async (event,s) => { trusted(event); if(!s||typeof s!=='object'||Array.isArray(s)) throw new Error('Invalid settings'); await fs.writeFile(path.join(app.getPath('userData'),'settings.json'),JSON.stringify(s,null,2),{mode:0o600}); return {ok:true}; });
 ipcMain.handle('runtime:detect', async event => { trusted(event); const checks=[['node','--version'],['npm','--version'],['python','--version'],['python3','--version'],['java','-version'],['go','version'],['rustc','--version'],['gcc','--version'],['clang','--version'],['dotnet','--version'],['php','--version'],['ruby','--version']]; return Promise.all(checks.map(([bin,arg])=>new Promise(resolve=>{const p=spawn(bin,[arg],{shell:false,windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>out+=d);p.on('error',()=>resolve({name:bin,available:false,version:null}));p.on('close',code=>resolve({name:bin,available:code===0,version:out.trim().split(/\r?\n/)[0]||null}));}))); });
-ipcMain.handle('run:javascript', async (event, payload) => { trusted(event); if(!payload||typeof payload.code!=='string'||payload.code.length>MAX_FILE_BYTES) throw new Error('Invalid code payload'); const dir=await fs.mkdtemp(path.join(app.getPath('temp'),'devforge-')); const file=path.join(dir,'main.cjs'); await fs.writeFile(file,payload.code,'utf8'); return new Promise(resolve=>{const child=spawn(process.execPath,['--disable-warning=ExperimentalWarning',file],{cwd:dir,shell:false,windowsHide:true,env:{PATH:process.env.PATH||'',SystemRoot:process.env.SystemRoot||'',ELECTRON_RUN_AS_NODE:'1'}});let stdout='',stderr='',timedOut=false,settled=false;const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);fs.rm(dir,{recursive:true,force:true}).catch(()=>{});resolve(result)};const append=(key,data)=>{const s=data.toString();if((stdout.length+stderr.length)<MAX_OUTPUT_BYTES){if(key==='stdout')stdout+=s;else stderr+=s;}else{child.kill();stderr+='\\n[output limit reached]';}};child.stdout.on('data',d=>append('stdout',d));child.stderr.on('data',d=>append('stderr',d));child.on('error',e=>finish({stdout,stderr:e.message,exitCode:1,durationMs:Date.now()-started}));const started=Date.now();const timer=setTimeout(()=>{timedOut=true;child.kill();finish({stdout,stderr:stderr+'\\n[execution timed out after 5 seconds]',exitCode:null,timedOut:true,durationMs:Date.now()-started});},5000);child.on('close',code=>finish({stdout,stderr,exitCode:code,timedOut,durationMs:Date.now()-started}));}); });
+const SUPPORTED_RUNNERS = {
+  javascript: { file: 'main.cjs', run: async dir => ({ bin: process.execPath, args: ['--disable-warning=ExperimentalWarning', path.join(dir,'main.cjs')], env: { ELECTRON_RUN_AS_NODE: '1' } }) },
+  python: { file: 'main.py', run: async dir => ({ bin: await findExecutable(['python','python3','py']), args: ['-I', path.join(dir,'main.py')] }) },
+  java: { file: 'Main.java', compile: async dir => ({ bin: 'javac', args: [path.join(dir,'Main.java')] }), run: async dir => ({ bin: 'java', args: ['-cp', dir, 'Main'] }) },
+  go: { file: 'main.go', run: async dir => ({ bin: 'go', args: ['run', path.join(dir,'main.go')] }) },
+  rust: { file: 'main.rs', compile: async dir => ({ bin: 'rustc', args: [path.join(dir,'main.rs'), '-o', path.join(dir, process.platform==='win32'?'main.exe':'main')] }), run: async dir => ({ bin: path.join(dir,process.platform==='win32'?'main.exe':'main'), args: [] }) },
+  c: { file: 'main.c', compile: async dir => ({ bin: await findExecutable(['gcc','clang']), args: [path.join(dir,'main.c'), '-O0', '-o', path.join(dir,process.platform==='win32'?'main.exe':'main')] }), run: async dir => ({ bin: path.join(dir,process.platform==='win32'?'main.exe':'main'), args: [] }) },
+  cpp: { file: 'main.cpp', compile: async dir => ({ bin: await findExecutable(['g++','clang++']), args: [path.join(dir,'main.cpp'), '-std=c++17', '-O0', '-o', path.join(dir,process.platform==='win32'?'main.exe':'main')] }), run: async dir => ({ bin: path.join(dir,process.platform==='win32'?'main.exe':'main'), args: [] }) },
+  php: { file: 'main.php', run: async dir => ({ bin: 'php', args: [path.join(dir,'main.php')] }) },
+  ruby: { file: 'main.rb', run: async dir => ({ bin: 'ruby', args: [path.join(dir,'main.rb')] }) }
+};
+async function findExecutable(names) {
+  for (const bin of names) {
+    const ok = await new Promise(resolve => {
+      const p = spawn(bin, ['--version'], { shell:false, windowsHide:true });
+      p.on('error', () => resolve(false)); p.on('close', code => resolve(code === 0));
+    });
+    if (ok) return bin;
+  }
+  throw new Error('Required runtime/compiler not found: ' + names.join(' or '));
+}
+function runChild(bin,args,{cwd,env={}}={}) {
+ return new Promise(resolve=>{
+  const started=Date.now(); let stdout='',stderr='',settled=false,limitHit=false;
+  const child=spawn(bin,args,{cwd,shell:false,windowsHide:true,env:{PATH:process.env.PATH||'',SystemRoot:process.env.SystemRoot||'',HOME:process.env.HOME||'',TMPDIR:process.env.TMPDIR||'',...env}});
+  const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve({...result,durationMs:Date.now()-started});};
+  const append=(key,data)=>{
+   const s=data.toString(); const remaining=MAX_OUTPUT_BYTES-Buffer.byteLength(stdout)-Buffer.byteLength(stderr);
+   if(remaining<=0){if(!limitHit){limitHit=true;child.kill();stderr+='\\n[output limit reached]';}return;}
+   const part=Buffer.from(s).subarray(0,remaining).toString();
+   if(key==='stdout')stdout+=part;else stderr+=part;
+   if(Buffer.byteLength(s)>remaining&&!limitHit){limitHit=true;child.kill();stderr+='\\n[output limit reached]';}
+  };
+  child.stdout.on('data',d=>append('stdout',d)); child.stderr.on('data',d=>append('stderr',d));
+  child.on('error',e=>finish({stdout,stderr:stderr||e.message,exitCode:1,timedOut:false}));
+  const timer=setTimeout(()=>{child.kill();finish({stdout,stderr:stderr+'\\n[execution timed out after 8 seconds]',exitCode:null,timedOut:true});},8000);
+  child.on('close',code=>finish({stdout,stderr,exitCode:code,timedOut:false}));
+ });
+}
+ipcMain.handle('run:code', async (event, payload) => {
+ trusted(event);
+ if(!payload||typeof payload.code!=='string'||payload.code.length>MAX_FILE_BYTES) throw new Error('Invalid code payload');
+ const language=String(payload.language||'javascript').toLowerCase();
+ const adapter=SUPPORTED_RUNNERS[language];
+ if(!adapter) throw new Error('No execution adapter for '+language+'. Supported: '+Object.keys(SUPPORTED_RUNNERS).join(', '));
+ const dir=await fs.mkdtemp(path.join(app.getPath('temp'),'devforge-'));
+ try {
+  await fs.writeFile(path.join(dir,adapter.file),payload.code,'utf8');
+  if(adapter.compile){
+   let compileSpec;
+   try{compileSpec=await adapter.compile(dir);}catch(e){return {stdout:'',stderr:e.message,exitCode:127,durationMs:0,stage:'setup'};}
+   const compiled=await runChild(compileSpec.bin,compileSpec.args,{cwd:dir});
+   if(compiled.exitCode!==0||compiled.timedOut) return {...compiled,stage:'compile'};
+  }
+  let runSpec;
+  try{runSpec=await adapter.run(dir);}catch(e){return {stdout:'',stderr:e.message,exitCode:127,durationMs:0,stage:'setup'};}
+  const result=await runChild(runSpec.bin,runSpec.args,{cwd:dir,env:runSpec.env||{}});
+  return {...result,stage:'run'};
+ } finally { await fs.rm(dir,{recursive:true,force:true}).catch(()=>{}); }
+});
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
