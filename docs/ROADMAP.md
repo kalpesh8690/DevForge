@@ -13,7 +13,7 @@ Prettier formatting is wired for JavaScript, TypeScript, JSON, HTML, CSS/SCSS, M
 The assistant can call an OpenAI-compatible chat-completions endpoint, supports configurable base URL/model, requires opt-in code context, stores API credentials using Electron safeStorage encryption, restricts remote providers to HTTPS (HTTP is permitted for localhost model servers), disables redirects, limits message sizes, and uses a request timeout. Secure key removal is available. Provider-specific compatibility, UI review/diff application, token budgeting, and integration tests remain pending. Never place secrets in source control or logs.
 
 ## Phase 5 — Advanced development (initial Git support implemented; remaining work pending)
-A local Git view supports status, recent history, unstaged diff, explicit stage-all, and commit actions through an allowlisted argument map with shell execution disabled. Push/pull/fetch and arbitrary Git commands are not exposed. Git credentials, branch switching, conflict resolution, PTY-backed terminal, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
+A local Git view supports status, recent history, working-tree diff (staged and unstaged tracked changes), explicit stage-all, and commit actions through an allowlisted argument map with shell execution disabled. Push/pull/fetch and arbitrary Git commands are not exposed. Git credentials, branch switching, conflict resolution, PTY-backed terminal, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
 
 ## Phase 6 — Production readiness (pending)
 Unit/integration/E2E coverage, dependency audit, threat review, installer smoke tests on Windows/macOS/Linux, signing/notarization, update infrastructure, and release documentation remain pending. Do not describe the application as production-ready until these gates pass.
@@ -22,5 +22,6 @@ Unit/integration/E2E coverage, dependency audit, threat review, installer smoke 
 - Runtime detection reports command availability but does not configure toolchains.
 - The workspace explorer indexes files recursively with a depth/file cap but does not yet provide a folder tree, create/rename/delete, or project-wide search.
 - Tool execution depends on locally installed runtimes and is not isolated from the operating-system account.
-- The AI panel is informational only and does not call an AI provider.
-- Git, debugger, remote execution, and formatter integrations are not implemented yet.
+- The AI panel calls OpenAI-compatible endpoints, but advanced edit proposals/review/apply workflows are pending.
+- Git support is local-only; remote operations, branch switching, and conflict resolution are not implemented.
+- Prettier is integrated for common text formats; language-specific formatters and advanced linting remain pending.
