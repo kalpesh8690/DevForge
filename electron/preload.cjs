@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('devforge', Object.freeze({
   saveAiKey: key => ipcRenderer.invoke('ai:saveKey', key),
   clearAiKey: () => ipcRenderer.invoke('ai:clearKey'),
   aiChat: payload => ipcRenderer.invoke('ai:chat', payload),
+  gitCommand: payload => ipcRenderer.invoke('git:command', payload),
   isDesktop: true
 }));
