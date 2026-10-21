@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { spawn } = require('node:child_process');
@@ -106,6 +106,49 @@ ipcMain.handle('run:code', async (event, payload) => {
   const result=await runChild(runSpec.bin,runSpec.args,{cwd:dir,env:runSpec.env||{}});
   return {...result,stage:'run'};
  } finally { await fs.rm(dir,{recursive:true,force:true}).catch(()=>{}); }
+});
+
+const aiKeyPath = () => path.join(app.getPath('userData'),'ai-key.enc');
+async function readAiKey(){
+ if(!safeStorage.isEncryptionAvailable()) throw new Error('OS secure storage is unavailable on this system.');
+ const encrypted=await fs.readFile(aiKeyPath());
+ return safeStorage.decryptString(encrypted);
+}
+ipcMain.handle('ai:keyStatus', async event => {
+ trusted(event);
+ try{await fs.access(aiKeyPath());return {configured:true,secureStorage:safeStorage.isEncryptionAvailable()};}
+ catch{return {configured:false,secureStorage:safeStorage.isEncryptionAvailable()};}
+});
+ipcMain.handle('ai:saveKey', async (event, key) => {
+ trusted(event);
+ if(typeof key!=='string'||key.trim().length<8||key.length>4096) throw new Error('Enter a valid API key.');
+ if(!safeStorage.isEncryptionAvailable()) throw new Error('OS secure storage is unavailable. AI credentials cannot be saved safely.');
+ await fs.writeFile(aiKeyPath(),safeStorage.encryptString(key.trim()),{mode:0o600});
+ return {ok:true};
+});
+ipcMain.handle('ai:chat', async (event, payload) => {
+ trusted(event);
+ if(!payload||typeof payload.endpoint!=='string'||typeof payload.model!=='string'||!Array.isArray(payload.messages)) throw new Error('Invalid AI request.');
+ if(payload.model.length>200||payload.messages.length<1||payload.messages.length>20) throw new Error('Invalid model or message count.');
+ const endpoint=new URL(payload.endpoint);
+ const localHosts=new Set(['localhost','127.0.0.1','::1']);
+ if(endpoint.username||endpoint.password||!(endpoint.protocol==='https:'||(endpoint.protocol==='http:'&&localHosts.has(endpoint.hostname)))) throw new Error('Use HTTPS for remote providers. HTTP is allowed only for localhost model servers.');
+ endpoint.pathname=endpoint.pathname.replace(/\\/$/,'');
+ if(!endpoint.pathname.endsWith('/chat/completions')) endpoint.pathname+='/chat/completions';
+ endpoint.search='';endpoint.hash='';
+ const messages=payload.messages.map(m=>{
+  if(!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>30000) throw new Error('Invalid AI message.');
+  return {role:m.role,content:m.content};
+ });
+ const key=await readAiKey();
+ const response=await fetch(endpoint.toString(),{method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:payload.model,messages,stream:false})});
+ const body=await response.text();
+ if(body.length>2*1024*1024) throw new Error('AI provider response exceeded 2 MB.');
+ let parsed;try{parsed=JSON.parse(body);}catch{throw new Error('AI provider returned a non-JSON response (HTTP '+response.status+').');}
+ if(!response.ok) throw new Error(parsed.error?.message||('AI provider request failed (HTTP '+response.status+').'));
+ const answer=parsed.choices?.[0]?.message?.content;
+ if(typeof answer!=='string') throw new Error('AI provider response did not contain a message.');
+ return {content:answer,model:parsed.model||payload.model};
 });
 app.whenReady().then(()=>{createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
