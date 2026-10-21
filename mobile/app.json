@@ -7,7 +7,7 @@
     "userInterfaceStyle": "dark",
     "android": {
       "package": "com.kalpeshchauhan.devforge",
-      "versionCode": 1,
+      "versionCode": 1
     },
     "plugins": ["expo-secure-store"]
   }
