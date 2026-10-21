@@ -7,7 +7,8 @@ DevForge is a cross-platform Electron developer workspace built with React, Vite
 - Electron desktop shell with context isolation, renderer Node integration disabled, a narrow preload API, and workspace-root file access checks.
 - Monaco code editor, workspace file indexing, save action, editor preferences, and dark/light theme.
 - Local runner adapters for JavaScript, Python, Java, Go, Rust, C, C++, PHP, and Ruby. The relevant runtimes/compilers must be installed on the machine.
-- Interactive local-first toolbox: JSON format/minify, JSON-to-CSV, line comparison, Base64/URL transforms, text statistics, and JWT payload decoding.
+- Prettier code formatting for JavaScript, TypeScript, JSON, HTML, CSS/SCSS, Markdown, and YAML.
+- Interactive local-first toolbox: JSON minify, JSON-to-CSV, line comparison, Base64/URL transforms, text statistics, and JWT payload decoding.
 - Runtime discovery panel, bounded output, temporary execution directories, and per-process timeouts.
 - Initial OpenAI-compatible AI chat panel with optional code context, configurable endpoint/model, HTTPS-only remote endpoints, and OS-encrypted credential storage.
 - Local Git view for status, recent history, unstaged diff, explicit stage-all, and commits (no remote commands).
