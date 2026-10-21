@@ -124,7 +124,7 @@ async function runGit(root, args) {
   const append=(key,data)=>{const current=Buffer.byteLength(stdout)+Buffer.byteLength(stderr);const remaining=MAX_OUTPUT_BYTES-current;if(remaining<=0){child.kill();return;}const part=Buffer.from(data).subarray(0,remaining).toString();if(key==='stdout')stdout+=part;else stderr+=part;if(Buffer.byteLength(data)>remaining)child.kill();};
   child.stdout.on('data',d=>append('stdout',d));child.stderr.on('data',d=>append('stderr',d));
   child.on('error',e=>finish({ok:false,stdout,stderr:e.message,exitCode:1}));
-  const timer=setTimeout(()=>{child.kill();finish({ok:false,stdout,stderr:stderr+'\\n[git command timed out]',exitCode:null,timedOut:true});},5000);
+  const timer=setTimeout(()=>{child.kill();finish({ok:false,stdout,stderr:stderr+'\n[git command timed out]',exitCode:null,timedOut:true});},5000);
   child.on('close',code=>finish({ok:code===0,stdout,stderr,exitCode:code}));
  });
 }
