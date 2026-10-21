@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "DevForge",
+    "slug": "devforge-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.kalpeshchauhan.devforge",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0D12"
+      }
+    },
+    "plugins": ["expo-secure-store"],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
