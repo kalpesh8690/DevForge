@@ -47,3 +47,11 @@ Run the build and smoke tests on each target OS (Windows, macOS, Linux) before d
 ## Security design
 
 Privileged operations live in Electron's main process and are exposed through a constrained preload API. Renderer Node integration is disabled and context isolation is enabled. Never pass renderer-controlled command strings to a shell. A secure production execution environment should use an OS sandbox, container, VM, or remote isolated runner with explicit resource limits.
+
+## Android companion app
+
+A separate React Native + Expo Android MVP lives in [`mobile/`](mobile/README.md). It includes a mobile code-draft editor with language starter templates, local developer utilities, and an OpenAI-compatible AI chat screen with opt-in code context and Android secure-storage-backed credentials.
+
+To start it, run `cd mobile && npm install && npx expo install --fix && npx expo start`. See [mobile setup and build instructions](mobile/README.md) for Android APK/AAB profiles.
+
+The Android app is an early companion—not full desktop parity. It does not bundle language compilers, terminal, debugger, Git client, or project file browsing. Native dependency installation, type-checking, device testing, and APK/AAB builds still need verification.
