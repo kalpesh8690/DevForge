@@ -1,33 +1,26 @@
-# DevForge roadmap and honest status
+# DevForge roadmap and implementation status
 
-## Phase 1 — Desktop foundation
+## Phase 1 — Desktop foundation (starter implemented; verification pending)
+Electron main/preload split, context isolation, disabled renderer Node integration, workspace file operations constrained to user-selected roots, local settings, React/Vite, Monaco editor, theme and editor preferences, and runtime discovery UI. Cross-platform security review and runtime testing are still required.
 
-Included in this starter: Electron main/preload split, context isolation, disabled renderer Node integration, file open/read/write IPC, folder listing, local settings, React/Vite, Monaco editor, theme toggle, and runtime discovery UI. Security review and cross-platform runtime testing remain required.
+## Phase 2 — Local execution (initial adapters implemented; verification pending)
+The editor Run action is wired to local JavaScript, Python, Java, Go, Rust, C, C++, PHP, and Ruby adapters. Compiled languages use temporary source/build directories. Child processes use `shell:false`, bounded output, and an 8-second timeout per process. Compiler/runtime availability differs by operating system and must be tested on each target platform. This is not a hardened sandbox: code runs with the current user's OS permissions. Stdin, command-line arguments, process tree termination guarantees, online execution, and container isolation remain pending.
 
-## Phase 2 — Execution
+## Phase 3 — Developer toolbox (initial utilities implemented)
+Interactive JSON formatting/minification and JSON-to-CSV, text comparison, Base64 and URL transforms, text statistics, and JWT payload decoding are implemented in the UI with unit tests for core helpers. JWT decoding does not validate signatures. Full formatter adapters, YAML/XML tooling, regex tester, API client, markdown preview, database clients, and additional utilities remain pending.
 
-Implemented initial JavaScript child-process runner with a 5-second timeout, bounded output, temporary working directory, and runtime discovery probes. It is not a hardened sandbox: executed code has user-level OS permissions. Python/compiled-language execution, stdin, arguments, multiple concurrent sessions, online execution providers, and container isolation are pending.
+## Phase 4 — AI assistant (pending)
+Provider adapters, OS credential vault integration, model selection, context preview, token/time limits, and approval-based diff application are not implemented. Never place secrets in renderer state, source control, or logs.
 
-## Phase 3 — Toolbox
+## Phase 5 — Advanced development (pending)
+PTY-backed terminal, Git workflow, snippet library, language-server/static-analysis integrations, and DAP debugger adapters remain pending. The output panel is not a debugger.
 
-Pending: formatter adapters, JSON/YAML/XML tools, regex tester, diff engine, API client, markdown preview, and utilities. Add deterministic unit tests before advertising each tool as complete.
+## Phase 6 — Production readiness (pending)
+Unit/integration/E2E coverage, dependency audit, threat review, installer smoke tests on Windows/macOS/Linux, signing/notarization, update infrastructure, and release documentation remain pending. Do not describe the application as production-ready until these gates pass.
 
-## Phase 4 — AI
-
-Pending: provider adapters, OS credential vault integration, model selection, context preview, token/time limits, and approval-based diff application. Do not place secrets in renderer state, source control, or logs.
-
-## Phase 5 — Advanced development
-
-Pending: PTY-backed terminal, Git workflow, snippet library, language-server/static-analysis integrations, and DAP debugger adapters. Do not call a plain output console a debugger.
-
-## Phase 6 — Production
-
-Pending: unit/integration/E2E coverage, dependency audit, threat review, installer smoke tests on Windows/macOS/Linux, signing/notarization, update infrastructure, and release documentation.
-
-## Current limitations
-
-- JavaScript execution is the only runner currently wired to the UI.
+## Known limitations
 - Runtime detection reports command availability but does not configure toolchains.
-- File explorer is currently a single-level list; recursive tree, safe rename/delete, and project-wide search are pending.
+- The workspace explorer indexes files recursively with a depth/file cap but does not yet provide a folder tree, create/rename/delete, or project-wide search.
+- Tool execution depends on locally installed runtimes and is not isolated from the operating-system account.
 - The AI panel is informational only and does not call an AI provider.
-- The UI does not yet imply Git, debugger, or remote execution support.
+- Git, debugger, remote execution, and formatter integrations are not implemented yet.
