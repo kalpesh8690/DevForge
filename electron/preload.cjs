@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('devforge', Object.freeze({
   runCode: (code, language) => ipcRenderer.invoke('run:code', { code, language }),
   aiKeyStatus: () => ipcRenderer.invoke('ai:keyStatus'),
   saveAiKey: key => ipcRenderer.invoke('ai:saveKey', key),
+  clearAiKey: () => ipcRenderer.invoke('ai:clearKey'),
   aiChat: payload => ipcRenderer.invoke('ai:chat', payload),
   isDesktop: true
 }));
