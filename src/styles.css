@@ -48,3 +48,10 @@ button:disabled{opacity:.6;cursor:wait}
 .app[data-theme="light"] .tree button.active{background:#eeebff;color:#5141b8}
 .app[data-theme="light"] .workspace-view{background:#f4f6fb;color:#20283a}
 @media(max-width:1150px){.tool-grid{grid-template-columns:1fr}.tool-panel.full{grid-column:auto}.runtime-grid{grid-template-columns:1fr}.workspace-view{padding:18px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+.mini-label{display:block;margin-top:10px;font-size:10px;color:var(--muted,#aab2c2);line-height:1.5}
+.mini-label .field{display:block;margin-top:5px;font-size:10px;padding:7px;min-width:0}
+.ai-state{color:#75d7a8}
+.ai-prompt{width:100%;height:100px;resize:vertical;margin-top:10px;padding:9px;background:var(--input,#0b0e14);color:var(--text,#e7eaf2);border:1px solid var(--border,#303646);border-radius:6px;font:11px/1.5 ui-sans-serif,system-ui}
+.ai-answer{max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--input,#0b0e14);border:1px solid var(--border,#303646);border-radius:6px;padding:9px;margin:10px 0 0;font:11px/1.6 ui-monospace,monospace;color:var(--text,#d6dced)}
