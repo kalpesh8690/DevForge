@@ -5,6 +5,7 @@ const { spawn } = require('node:child_process');
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 let mainWindow;
+const workspaceRoots = new Set();
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 256 * 1024;
 const runtimes = {
@@ -23,11 +24,26 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', (event, url) => { const allowed = isDev ? url.startsWith(process.env.VITE_DEV_SERVER_URL) : url.startsWith('file://'); if (!allowed) event.preventDefault(); });
 }
 function trusted(event) { if (!mainWindow || event.sender.id !== mainWindow.webContents.id) throw new Error('Untrusted IPC sender'); }
-ipcMain.handle('dialog:openFolder', async event => { trusted(event); const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); return r.canceled ? null : { path: r.filePaths[0], name: path.basename(r.filePaths[0]) }; });
+async function assertWorkspacePath(target, {allowRoot=true}={}) {
+ if(typeof target!=='string'||!path.isAbsolute(target)) throw new Error('Invalid path');
+ const resolved=path.resolve(target);
+ for(const root of workspaceRoots){
+  const rel=path.relative(root,resolved);
+  if((rel===''&&allowRoot)|| (rel!==''&&!rel.startsWith('..'+path.sep)&&rel!=='..'&&!path.isAbsolute(rel))){
+   const realRoot=await fs.realpath(root);
+   let realTarget;
+   try{realTarget=await fs.realpath(resolved);}catch(error){if(error.code==='ENOENT'&&rel!=='')return resolved;throw error;}
+   const realRel=path.relative(realRoot,realTarget);
+   if(realRel===''||(!realRel.startsWith('..'+path.sep)&&realRel!=='..'&&!path.isAbsolute(realRel))) return resolved;
+  }
+ }
+ throw new Error('Path is outside the currently opened workspace. Open its parent folder first.');
+}
+ipcMain.handle('dialog:openFolder', async event => { trusted(event); const r = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] }); if(r.canceled)return null; workspaceRoots.add(await fs.realpath(r.filePaths[0])); return { path: r.filePaths[0], name: path.basename(r.filePaths[0]) }; });
 ipcMain.handle('dialog:openFile', async event => { trusted(event); const r = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'] }); return r.canceled ? null : r.filePaths[0]; });
-ipcMain.handle('fs:listDirectory', async (event, dir) => { trusted(event); if (typeof dir !== 'string' || !path.isAbsolute(dir)) throw new Error('Invalid path'); const entries = await fs.readdir(dir, { withFileTypes: true }); return entries.filter(e => !['.git','node_modules','.venv'].includes(e.name)).map(e => ({ name:e.name,path:path.join(dir,e.name),type:e.isDirectory()?'directory':'file' })).sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==='directory'?-1:1); });
-ipcMain.handle('fs:read', async (event, file) => { trusted(event); if(typeof file!=='string'||!path.isAbsolute(file)) throw new Error('Invalid path'); const stat=await fs.stat(file); if(!stat.isFile()||stat.size>MAX_FILE_BYTES) throw new Error('File is not a regular text file or exceeds 2 MB'); return fs.readFile(file,'utf8'); });
-ipcMain.handle('fs:write', async (event, p) => { trusted(event); if(!p||typeof p.path!=='string'||!path.isAbsolute(p.path)||typeof p.content!=='string'||Buffer.byteLength(p.content)>MAX_FILE_BYTES*2) throw new Error('Invalid save request'); await fs.writeFile(p.path,p.content,'utf8'); return {ok:true}; });
+ipcMain.handle('fs:listDirectory', async (event, dir) => { trusted(event); dir=await assertWorkspacePath(dir); const entries = await fs.readdir(dir, { withFileTypes: true }); return entries.filter(e => !['.git','node_modules','.venv'].includes(e.name)).map(e => ({ name:e.name,path:path.join(dir,e.name),type:e.isDirectory()?'directory':'file' })).sort((a,b)=>a.type===b.type?a.name.localeCompare(b.name):a.type==='directory'?-1:1); });
+ipcMain.handle('fs:read', async (event, file) => { trusted(event); file=await assertWorkspacePath(file,{allowRoot:false}); const stat=await fs.stat(file); if(!stat.isFile()||stat.size>MAX_FILE_BYTES) throw new Error('File is not a regular text file or exceeds 2 MB'); return fs.readFile(file,'utf8'); });
+ipcMain.handle('fs:write', async (event, p) => { trusted(event); if(!p||typeof p.content!=='string'||Buffer.byteLength(p.content)>MAX_FILE_BYTES*2) throw new Error('Invalid save request'); const target=await assertWorkspacePath(p.path,{allowRoot:false}); await fs.writeFile(target,p.content,'utf8'); return {ok:true}; });
 ipcMain.handle('settings:load', async event => { trusted(event); try{return JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'settings.json'),'utf8'));}catch{return {theme:'dark',fontSize:14,wordWrap:'on',minimap:true};} });
 ipcMain.handle('settings:save', async (event,s) => { trusted(event); if(!s||typeof s!=='object'||Array.isArray(s)) throw new Error('Invalid settings'); await fs.writeFile(path.join(app.getPath('userData'),'settings.json'),JSON.stringify(s,null,2),{mode:0o600}); return {ok:true}; });
 ipcMain.handle('runtime:detect', async event => { trusted(event); const checks=[['node','--version'],['npm','--version'],['python','--version'],['python3','--version'],['java','-version'],['go','version'],['rustc','--version'],['gcc','--version'],['clang','--version'],['dotnet','--version'],['php','--version'],['ruby','--version']]; return Promise.all(checks.map(([bin,arg])=>new Promise(resolve=>{const p=spawn(bin,[arg],{shell:false,windowsHide:true});let out='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>out+=d);p.on('error',()=>resolve({name:bin,available:false,version:null}));p.on('close',code=>resolve({name:bin,available:code===0,version:out.trim().split(/\r?\n/)[0]||null}));}))); });
