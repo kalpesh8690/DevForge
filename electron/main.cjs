@@ -115,6 +115,36 @@ ipcMain.handle('run:code', async (event, payload) => {
  } finally { await fs.rm(dir,{recursive:true,force:true}).catch(()=>{}); }
 });
 
+
+async function runGit(root, args) {
+ return new Promise(resolve=>{
+  const started=Date.now();let stdout='',stderr='',settled=false;
+  const child=spawn('git',args,{cwd:root,shell:false,windowsHide:true});
+  const finish=result=>{if(settled)return;settled=true;clearTimeout(timer);resolve({...result,durationMs:Date.now()-started});};
+  const append=(key,data)=>{const current=Buffer.byteLength(stdout)+Buffer.byteLength(stderr);const remaining=MAX_OUTPUT_BYTES-current;if(remaining<=0){child.kill();return;}const part=Buffer.from(data).subarray(0,remaining).toString();if(key==='stdout')stdout+=part;else stderr+=part;if(Buffer.byteLength(data)>remaining)child.kill();};
+  child.stdout.on('data',d=>append('stdout',d));child.stderr.on('data',d=>append('stderr',d));
+  child.on('error',e=>finish({ok:false,stdout,stderr:e.message,exitCode:1}));
+  const timer=setTimeout(()=>{child.kill();finish({ok:false,stdout,stderr:stderr+'\\n[git command timed out]',exitCode:null,timedOut:true});},5000);
+  child.on('close',code=>finish({ok:code===0,stdout,stderr,exitCode:code}));
+ });
+}
+ipcMain.handle('git:command', async (event, payload) => {
+ trusted(event);
+ if(!payload||typeof payload.root!=='string'||typeof payload.action!=='string') throw new Error('Invalid Git request.');
+ const root=await assertWorkspacePath(payload.root);
+ try{await fs.access(path.join(root,'.git'));}catch{throw new Error('Open a Git repository root folder first.');}
+ const actions={
+  status:()=>['status','--short','--branch'],
+  log:()=>['log','-10','--oneline','--decorate'],
+  diff:()=>['diff','--no-ext-diff','--'],
+  branches:()=>['branch','--list'],
+  stageAll:()=>['add','--all'],
+  commit:()=>{if(typeof payload.message!=='string'||!payload.message.trim()||payload.message.length>200)throw new Error('Commit message must be 1–200 characters.');return ['commit','-m',payload.message.trim()];}
+ };
+ if(!Object.hasOwn(actions,payload.action))throw new Error('Unsupported Git action.');
+ const args=actions[payload.action]();
+ return runGit(root,args);
+});
 const aiKeyPath = () => path.join(app.getPath('userData'),'ai-key.enc');
 async function readAiKey(){
  if(!safeStorage.isEncryptionAvailable()) throw new Error('OS secure storage is unavailable on this system.');
