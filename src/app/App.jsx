@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import Editor from '@monaco-editor/react';
-import {Bot,Braces,FileCode2,FolderOpen,Play,Settings,ShieldCheck,Terminal,Sun,Moon,Wrench,Code2,GitCompare,RefreshCw,Copy,Check,Save,Search,ExternalLink} from 'lucide-react';
+import {Bot,Braces,FileCode2,FolderOpen,Play,Settings,ShieldCheck,Terminal,Sun,Moon,Wrench,Code2,GitCompare,RefreshCw,Copy,Save,Search} from 'lucide-react';
 import {formatJson,minifyJson,jsonToCsv,base64Encode,base64Decode,encodeUrl,decodeUrl,textStats,compareLines,decodeJwtPayload,detectLanguage} from '../lib/devtools.js';
 
 const starter = `// Welcome to DevForge
